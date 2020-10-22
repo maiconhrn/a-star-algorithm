@@ -6,9 +6,17 @@
 
 typedef unsigned long long ull;
 
+typedef enum {
+    H1, H2, H3, H4, H5
+} heuristc_t;
+
+typedef enum {
+    UP, DOWN, LEFT, RIGHT
+} change_t;
+
 typedef struct state {
     ull hash_key = -1;
-    short **board; // 4X4
+    short **board{}; // 4X4
     int heuristic_value = -1;
 
     state *p = nullptr; // parent
@@ -28,14 +36,12 @@ typedef struct state {
 
     void copy_board(short **b);
 
+    void add_next_changing_bord_piece(int i, int j, change_t dir) const;
+
     bool operator==(const state &rhs) const;
 
     bool operator!=(const state &rhs) const;
 } state;
-
-typedef enum {
-    H1, H2, H3, H4, H5
-} heuristc_t;
 
 class a_star {
 private:
@@ -44,7 +50,7 @@ private:
     std::unordered_map<ull, state> S; //initial
     std::unordered_map<ull, state> T; //final
 
-    state find_min_f(std::unordered_map<ull, state> &map);
+    static state find_min_f(std::unordered_map<ull, state> &map);
 
     static int h1(state s);
 
@@ -59,8 +65,8 @@ private:
     static int calc_heuristic(heuristc_t type, state s);
 
 public:
-    a_star(const std::unordered_map<ull, state> &a, const std::unordered_map<ull, state> &f,
-           const std::unordered_map<ull, state> &s, const std::unordered_map<ull, state> &t);
+    a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> f,
+           std::unordered_map<ull, state> s, std::unordered_map<ull, state> t);
 
     ~a_star();
 

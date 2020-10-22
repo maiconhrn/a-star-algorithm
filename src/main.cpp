@@ -9,8 +9,6 @@
  *
  */
 int main() {
-//    getline(cin, in);
-
     auto board = read_board(std::cin);
 
     auto result = calc_lowest_move_number_to_final_board(board);

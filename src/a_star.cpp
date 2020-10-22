@@ -1,14 +1,15 @@
 #include <cmath>
 #include <set>
+#include <utility>
 #include "a_star.h"
 #include "15_puzzle.h"
 
-a_star::a_star(const std::unordered_map<ull, state> &a, const std::unordered_map<ull, state> &f,
-               const std::unordered_map<ull, state> &s, const std::unordered_map<ull, state> &t)
-        : A(a),
-          F(f),
-          S(s),
-          T(t) {}
+a_star::a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> f,
+               std::unordered_map<ull, state> s, std::unordered_map<ull, state> t)
+        : A(std::move(a)),
+          F(std::move(f)),
+          S(std::move(s)),
+          T(std::move(t)) {}
 
 int a_star::h1(const state s) {
     int out_of_pos = 0;
@@ -66,58 +67,58 @@ void state::calc_f() {
     f = g + heuristic_value;
 }
 
+void state::add_next_changing_bord_piece(int i, int j, change_t dir) const {
+    state _s;
+    short aux;
+
+    _s.g = g + 1;
+    _s.copy_board(board);
+
+    switch (dir) {
+        case UP:
+            aux = _s.board[i][j];
+            _s.board[i][j] = _s.board[i - 1][j];
+            _s.board[i - 1][j] = aux;
+            break;
+        case DOWN:
+            aux = _s.board[i][j];
+            _s.board[i][j] = _s.board[i + 1][j];
+            _s.board[i + 1][j] = aux;
+            break;
+        case LEFT:
+            aux = _s.board[i][j];
+            _s.board[i][j] = _s.board[i][j - 1];
+            _s.board[i][j - 1] = aux;
+            break;
+        case RIGHT:
+            aux = _s.board[i][j];
+            _s.board[i][j] = _s.board[i][j + 1];
+            _s.board[i][j + 1] = aux;
+            break;
+        default:
+            break;
+    }
+
+    _s.generate_hash_key();
+    t->insert(std::make_pair(_s.hash_key, _s));
+}
+
 void state::calc_t() const {
     t->clear();
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
             if (board[i][j] == 0) {
-                if (i != 0) { //trocar com a peça de cima
-                    state up;
-                    up.g = g + 1;
-                    up.copy_board(board);
-
-                    short aux = up.board[i][j];
-                    up.board[i][j] = up.board[i - 1][j];
-                    up.board[i - 1][j] = aux;
-
-                    up.generate_hash_key();
-                    t->insert(std::make_pair(up.hash_key, up));
+                if (i != 0) {
+                    add_next_changing_bord_piece(i, j, change_t::UP);
                 }
-                if (i != 3) { //trocar com a peça de  baixo
-                    state down;
-                    down.g = g + 1;
-                    down.copy_board(board);
-
-                    short aux = down.board[i][j];
-                    down.board[i][j] = down.board[i + 1][j];
-                    down.board[i + 1][j] = aux;
-
-                    down.generate_hash_key();
-                    t->insert(std::make_pair(down.hash_key, down));
+                if (i != 3) {
+                    add_next_changing_bord_piece(i, j, change_t::DOWN);
                 }
-                if (j != 0) { //trocar com a peça da esquerda
-                    state left;
-                    left.g = g + 1;
-                    left.copy_board(board);
-
-                    short aux = left.board[i][j];
-                    left.board[i][j] = left.board[i][j - 1];
-                    left.board[i][j - 1] = aux;
-
-                    left.generate_hash_key();
-                    t->insert(std::make_pair(left.hash_key, left));
+                if (j != 0) {
+                    add_next_changing_bord_piece(i, j, change_t::LEFT);
                 }
-                if (j != 3) { //trocar com a peça da direita
-                    state right;
-                    right.g = g + 1;
-                    right.copy_board(board);
-
-                    short aux = right.board[i][j];
-                    right.board[i][j] = right.board[i][j + 1];
-                    right.board[i][j + 1] = aux;
-
-                    right.generate_hash_key();
-                    t->insert(std::make_pair(right.hash_key, right));
+                if (j != 3) {
+                    add_next_changing_bord_piece(i, j, change_t::RIGHT);
                 }
             }
         }
@@ -204,12 +205,7 @@ std::pair<bool, int> a_star::run() {
            : std::pair<bool, int>(false, -1);
 }
 
-a_star::~a_star() {
-    //delete[] &A;
-    //delete[] &F;
-    //delete[] &S;
-    //delete[] &T;
-}
+a_star::~a_star() = default;
 
 state a_star::find_min_f(std::unordered_map<ull, state> &map) {
     if (!map.empty()) {
