@@ -27,10 +27,8 @@ std::pair<bool, int> calc_lowest_move_number_to_final_board(short **board) {
 
     a_star astar(std::unordered_map<ull, state>(),
                  std::unordered_map<ull, state>(),
-                 std::unordered_map<ull, state>({std::make_pair(state1.hash_key, state1)}),
-                 std::unordered_map<ull, state>({std::make_pair(state2.hash_key, state2)}));
+                 std::unordered_map<ull, state>({{state1.hash_key, state1}}),
+                 std::unordered_map<ull, state>({{state2.hash_key, state2}}));
 
-    auto result = astar.run();
-
-    return result;
+    return astar.run();
 }

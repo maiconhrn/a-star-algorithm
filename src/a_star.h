@@ -32,6 +32,8 @@ typedef struct state {
 
     void calc_t() const;
 
+    void calc_heuristic(heuristc_t type);
+
     void generate_hash_key();
 
     void copy_board(short **b);
@@ -62,8 +64,6 @@ private:
 
     static int h5(state s);
 
-    static int calc_heuristic(heuristc_t type, state s);
-
 public:
     a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> f,
            std::unordered_map<ull, state> s, std::unordered_map<ull, state> t);
@@ -71,6 +71,8 @@ public:
     ~a_star();
 
     std::pair<bool, int> run();
+
+    static int calc_heuristic(heuristc_t type, state s);
 };
 
 #endif //A_STAR_H

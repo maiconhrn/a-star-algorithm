@@ -25,18 +25,48 @@ int a_star::h1(const state s) {
     return out_of_pos;
 }
 
-int a_star::h3(state s) {
+int a_star::h2(state s) {
     int out_of_pos = 0;
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            short pos = s.board[i][j];
-            if (pos == 0 || s.board[i][j] == FINAL_BOARD_STATE[i][j]) {
-                continue;
-            }
-            out_of_pos += (short) (abs((short) (floor((pos - 1) % 4)) - i)
-                                   + abs((short) floor(pos / 4.1) - j));
+    std::pair<int, int> actual, next;
+    short actual_v, next_v;
+
+    std::pair<int, int> board_positions[] = {
+            {0, 0},
+            {0, 1},
+            {0, 2},
+            {0, 3},
+            {1, 3},
+            {2, 3},
+            {3, 3},
+            {3, 2},
+            {3, 1},
+            {3, 0},
+            {2, 0},
+            {1, 0},
+            {1, 1},
+            {1, 2},
+            {2, 2},
+            {2, 1}
+    };
+
+    for (int i = 0; i < 14; ++i) {
+        actual = board_positions[i];
+        next = board_positions[i + 1];
+        actual_v = s.board[actual.first][actual.second];
+        next_v = s.board[next.first][next.second];
+
+        if (actual_v != 0
+            && ((actual_v != 15 && next_v != actual_v + 1)
+                || (actual_v == 15 && next_v != 0))) {
+            out_of_pos++;
         }
     }
+
+    return out_of_pos;
+}
+
+int a_star::h3(state s) {
+    int out_of_pos = 0;
     return out_of_pos;
 }
 
@@ -45,7 +75,7 @@ int a_star::calc_heuristic(const heuristc_t type, state s) {
         case heuristc_t::H1:
             return h1(s);
         case heuristc_t::H2:
-            return 0;
+            return h2(s);
         case heuristc_t::H3:
             return h3(s);
         case heuristc_t::H4:
@@ -100,7 +130,7 @@ void state::add_next_changing_bord_piece(int i, int j, change_t dir) const {
     }
 
     _s.generate_hash_key();
-    t->insert(std::make_pair(_s.hash_key, _s));
+    t->insert({_s.hash_key, _s});
 }
 
 void state::calc_t() const {
@@ -156,12 +186,16 @@ void state::copy_board(short **b) {
     }
 }
 
+void state::calc_heuristic(heuristc_t type) {
+    heuristic_value = a_star::calc_heuristic(type, *this);
+}
+
 std::pair<bool, int> a_star::run() {
     state v;
     std::unordered_map<ull, state>::iterator it;
 
     for (auto &s : S) {
-        s.second.heuristic_value = calc_heuristic(heuristc_t::H1, s.second);
+        s.second.calc_heuristic(heuristc_t::H2);
         s.second.g = 0;
         s.second.p = nullptr;
         s.second.calc_f();
@@ -174,7 +208,7 @@ std::pair<bool, int> a_star::run() {
     v = A.begin()->second;
     while (T.find(v.hash_key) == T.end() && v.hash_key != -1) {
         A.erase(v.hash_key);
-        F.insert(std::make_pair(v.hash_key, v));
+        F.insert({v.hash_key, v});
 
         v.calc_t();
         for (auto &m : *(v.t)) {
@@ -191,7 +225,7 @@ std::pair<bool, int> a_star::run() {
             if (A.find(m.first) == A.end()
                 && F.find(m.first) == F.end()) {
                 m.second.p = &v;
-                m.second.heuristic_value = calc_heuristic(heuristc_t::H1, m.second);
+                m.second.calc_heuristic(heuristc_t::H2);
                 m.second.calc_f();
                 A.insert(m);
             }
@@ -200,9 +234,11 @@ std::pair<bool, int> a_star::run() {
         v = find_min_f(A);
     }
 
-    return (v.f >= 0 && T.find(v.hash_key) != T.end())
-           ? std::pair<bool, int>(true, v.g)
-           : std::pair<bool, int>(false, -1);
+    if (v.f >= 0 && T.find(v.hash_key) != T.end()) {
+        return {true, v.g};
+    }
+
+    return {false, -1};
 }
 
 a_star::~a_star() = default;
