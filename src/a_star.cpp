@@ -30,8 +30,8 @@ int a_star::h2(state s) {
     std::pair<int, int> actual, next;
     short actual_v, next_v;
 
-    std::pair<int, int> board_positions[] = {
-            {0, 0},
+    const static std::pair<int, int> board_ordered_positions[] = { // ordered by for loop, asc ordered by value
+            {0, 0},                                          // of final board 1;2;3;4...W
             {0, 1},
             {0, 2},
             {0, 3},
@@ -49,10 +49,10 @@ int a_star::h2(state s) {
             {2, 1}
     };
 
-    for (int i = 0; i < 14; ++i) {
-        actual = board_positions[i];
-        next = board_positions[i + 1];
+    for (int i = 0; i < 15; ++i) {
+        actual = board_ordered_positions[i];
         actual_v = s.board[actual.first][actual.second];
+        next = board_ordered_positions[i + 1];
         next_v = s.board[next.first][next.second];
 
         if (actual_v != 0
@@ -65,9 +65,44 @@ int a_star::h2(state s) {
     return out_of_pos;
 }
 
+int a_star::calc_manhattan_distance(int value, int i, int j) {
+    const static std::pair<int, int> final_board_postions[] = { // get by value ex: value[1]: i=0;j=0;
+            {2, 1},                                       // ex: value[2]: i=0;j=1;
+            {0, 0},
+            {0, 1},
+            {0, 2},
+            {0, 3},
+            {1, 3},
+            {2, 3},
+            {3, 3},
+            {3, 2},
+            {3, 1},
+            {3, 0},
+            {2, 0},
+            {1, 0},
+            {1, 1},
+            {1, 2},
+            {2, 2}
+    };
+
+    auto correct_pos = final_board_postions[value];
+    int manhattan_distance = std::abs(correct_pos.first - i)
+                             + std::abs(correct_pos.second - j);
+    return manhattan_distance;
+}
+
 int a_star::h3(state s) {
-    int out_of_pos = 0;
-    return out_of_pos;
+    int heuristc_v = 0;
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (s.board[i][j] != FINAL_BOARD_STATE[i][j]) {
+                heuristc_v += calc_manhattan_distance(s.board[i][j], i, j);
+            }
+        }
+    }
+
+    return heuristc_v;
 }
 
 int a_star::calc_heuristic(const heuristc_t type, state s) {
@@ -195,7 +230,7 @@ std::pair<bool, int> a_star::run() {
     std::unordered_map<ull, state>::iterator it;
 
     for (auto &s : S) {
-        s.second.calc_heuristic(heuristc_t::H2);
+        s.second.calc_heuristic(heuristc_t::H3);
         s.second.g = 0;
         s.second.p = nullptr;
         s.second.calc_f();
@@ -225,7 +260,7 @@ std::pair<bool, int> a_star::run() {
             if (A.find(m.first) == A.end()
                 && F.find(m.first) == F.end()) {
                 m.second.p = &v;
-                m.second.calc_heuristic(heuristc_t::H2);
+                m.second.calc_heuristic(heuristc_t::H3);
                 m.second.calc_f();
                 A.insert(m);
             }

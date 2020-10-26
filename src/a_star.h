@@ -54,6 +54,8 @@ private:
 
     static state find_min_f(std::unordered_map<ull, state> &map);
 
+    static int calc_manhattan_distance(int value, int i, int j);
+
     static int h1(state s);
 
     static int h2(state s);
