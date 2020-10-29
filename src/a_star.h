@@ -16,34 +16,49 @@ typedef enum {
 
 typedef struct state {
     ull hash_key = -1;
-    short **board{}; // 4X4
+    short board[4][4]; // 4X4
     int heuristic_value = -1;
 
-    state *p = nullptr; // parent
     int g = -1;
     int f = -1;
-    std::unordered_map<ull, struct state> *t = new std::unordered_map<ull, struct state>(); //successors
 
     state();
 
-    explicit state(short **board);
+    explicit state(short board[4][4]);
+
+    virtual ~state();
 
     void calc_f();
 
-    void calc_t() const;
+    std::unordered_map<ull, state> generate_seccessors();
 
     void calc_heuristic(heuristc_t type);
 
     void generate_hash_key();
 
-    void copy_board(short **b);
+    void copy_board(short b[4][4]);
 
-    void add_next_changing_bord_piece(int i, int j, change_t dir) const;
+    state generate_next_seccessor(int i, int j, change_t dir);
 
     bool operator==(const state &rhs) const;
 
     bool operator!=(const state &rhs) const;
+
+    bool operator<(const state &rhs) const;
+
+    bool operator>(const state &rhs) const;
+
+    bool operator<=(const state &rhs) const;
+
+    bool operator>=(const state &rhs) const;
 } state;
+
+const static auto pair_ull_state_comparator = [](const std::pair<ull, state> &a,
+                                                 const std::pair<ull, state> &b) -> bool {
+    return a.second.f == b.second.f
+           ? a.second.heuristic_value < b.second.heuristic_value
+           : a.second.f < b.second.f;
+};
 
 class a_star {
 private:
@@ -52,19 +67,17 @@ private:
     std::unordered_map<ull, state> S; //initial
     std::unordered_map<ull, state> T; //final
 
-    static state find_min_f(std::unordered_map<ull, state> &map);
-
     static int calc_manhattan_distance(int value, int i, int j);
 
-    static int h1(state s);
+    static int h1(const state &s);
 
-    static int h2(state s);
+    static int h2(const state &s);
 
-    static int h3(state s);
+    static int h3(const state &s);
 
-    static int h4(state s);
+    static int h4(const state &s);
 
-    static int h5(state s);
+    static int h5(const state &s);
 
 public:
     a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> f,

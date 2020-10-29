@@ -16,14 +16,9 @@ short **read_board(std::istream &in) {
     return board;
 }
 
-std::pair<bool, int> calc_lowest_move_number_to_final_board(short **board) {
+std::pair<bool, int> calc_lowest_move_number_to_final_board(short board[4][4]) {
     state state1(board);
-    state state2(new short *[4]{
-            FINAL_BOARD_STATE[0],
-            FINAL_BOARD_STATE[1],
-            FINAL_BOARD_STATE[2],
-            FINAL_BOARD_STATE[3],
-    });
+    state state2(FINAL_BOARD_STATE);
 
     a_star astar(std::unordered_map<ull, state>(),
                  std::unordered_map<ull, state>(),

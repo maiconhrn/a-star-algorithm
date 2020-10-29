@@ -1,6 +1,7 @@
 #include <cmath>
 #include <set>
 #include <utility>
+#include <algorithm>
 #include "a_star.h"
 #include "15_puzzle.h"
 
@@ -11,7 +12,7 @@ a_star::a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> 
           S(std::move(s)),
           T(std::move(t)) {}
 
-int a_star::h1(const state s) {
+int a_star::h1(const state &s) {
     int out_of_pos = 0;
 
     for (int i = 0; i < 4; ++i) {
@@ -25,7 +26,7 @@ int a_star::h1(const state s) {
     return out_of_pos;
 }
 
-int a_star::h2(state s) {
+int a_star::h2(const state &s) {
     int out_of_pos = 0;
     std::pair<int, int> actual, next;
     short actual_v, next_v;
@@ -91,7 +92,7 @@ int a_star::calc_manhattan_distance(int value, int i, int j) {
     return manhattan_distance;
 }
 
-int a_star::h3(state s) {
+int a_star::h3(const state &s) {
     int heuristc_v = 0;
 
     for (int i = 0; i < 4; ++i) {
@@ -105,6 +106,14 @@ int a_star::h3(state s) {
     return heuristc_v;
 }
 
+int a_star::h4(const state &s) {
+    return (int) (0.01 * h1(s) + 0.01 * h2(s) + 0.98 * h3(s));
+};
+
+int a_star::h5(const state &s) {
+    return std::max({h1(s), h2(s), h3(s)});
+};
+
 int a_star::calc_heuristic(const heuristc_t type, state s) {
     switch (type) {
         case heuristc_t::H1:
@@ -114,9 +123,9 @@ int a_star::calc_heuristic(const heuristc_t type, state s) {
         case heuristc_t::H3:
             return h3(s);
         case heuristc_t::H4:
-            return 0;
+            return h4(s);
         case heuristc_t::H5:
-            return 0;
+            return h5(s);
         default:
             return 0;
     }
@@ -124,7 +133,8 @@ int a_star::calc_heuristic(const heuristc_t type, state s) {
 
 state::state() = default;
 
-state::state(short **board) : board(board) {
+state::state(short board[4][4]) {
+    copy_board(board);
     generate_hash_key();
 }
 
@@ -132,7 +142,7 @@ void state::calc_f() {
     f = g + heuristic_value;
 }
 
-void state::add_next_changing_bord_piece(int i, int j, change_t dir) const {
+state state::generate_next_seccessor(int i, int j, change_t dir) {
     state _s;
     short aux;
 
@@ -165,29 +175,43 @@ void state::add_next_changing_bord_piece(int i, int j, change_t dir) const {
     }
 
     _s.generate_hash_key();
-    t->insert({_s.hash_key, _s});
+
+    return _s;
 }
 
-void state::calc_t() const {
-    t->clear();
+std::unordered_map<ull, state> state::generate_seccessors() {
+    state s;
+    auto successors = std::unordered_map<ull, state>();
+
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
             if (board[i][j] == 0) {
                 if (i != 0) {
-                    add_next_changing_bord_piece(i, j, change_t::UP);
+                    s = generate_next_seccessor(i, j, change_t::UP);
+                    successors.insert({s.hash_key, s});
                 }
+
                 if (i != 3) {
-                    add_next_changing_bord_piece(i, j, change_t::DOWN);
+                    s = generate_next_seccessor(i, j, change_t::DOWN);
+                    successors.insert({s.hash_key, s});
                 }
+
                 if (j != 0) {
-                    add_next_changing_bord_piece(i, j, change_t::LEFT);
+                    s = generate_next_seccessor(i, j, change_t::LEFT);
+                    successors.insert({s.hash_key, s});
                 }
+
                 if (j != 3) {
-                    add_next_changing_bord_piece(i, j, change_t::RIGHT);
+                    s = generate_next_seccessor(i, j, change_t::RIGHT);
+                    successors.insert({s.hash_key, s});
                 }
+
+                return successors;
             }
         }
     }
+
+    return {};
 }
 
 void state::generate_hash_key() {
@@ -210,11 +234,8 @@ bool state::operator!=(const state &rhs) const {
     return !(rhs == *this);
 }
 
-void state::copy_board(short **b) {
-    board = new short *[4];
-
+void state::copy_board(short b[4][4]) {
     for (int i = 0; i < 4; ++i) {
-        board[i] = new short[4];
         for (int j = 0; j < 4; ++j) {
             board[i][j] = b[i][j];
         }
@@ -225,31 +246,58 @@ void state::calc_heuristic(heuristc_t type) {
     heuristic_value = a_star::calc_heuristic(type, *this);
 }
 
+bool state::operator<(const state &rhs) const {
+    return f < rhs.f;
+}
+
+bool state::operator>(const state &rhs) const {
+    return rhs < *this;
+}
+
+bool state::operator<=(const state &rhs) const {
+    return !(rhs < *this);
+}
+
+bool state::operator>=(const state &rhs) const {
+    return !(*this < rhs);
+}
+
 std::pair<bool, int> a_star::run() {
     state v;
     std::unordered_map<ull, state>::iterator it;
+    const static auto cmp = [](const std::pair<ull, state> &a, const std::pair<ull, state> &b) -> bool {
+        return a.second.f == b.second.f
+               ? a.second.heuristic_value < b.second.heuristic_value
+               : a.second.f < b.second.f;
+    };
+    auto A_aux = std::multiset<std::pair<ull, state>, decltype(cmp)>(cmp);
+    auto successors = std::unordered_map<ull, state>();
 
     for (auto &s : S) {
         s.second.calc_heuristic(heuristc_t::H3);
         s.second.g = 0;
-        s.second.p = nullptr;
         s.second.calc_f();
     }
 
     A.clear();
     A.insert(S.begin(), S.end());
+    A_aux.clear();
+    A_aux.insert(A.begin(), A.end());
     F.clear();
 
-    v = A.begin()->second;
-    while (T.find(v.hash_key) == T.end() && v.hash_key != -1) {
+    int c = 0;
+    while ((v = A_aux.begin()->second).hash_key != -1
+           && T.find(v.hash_key) == T.end()) {
         A.erase(v.hash_key);
+        A_aux.erase(A_aux.lower_bound({v.hash_key, v}));
         F.insert({v.hash_key, v});
 
-        v.calc_t();
-        for (auto &m : *(v.t)) {
+        successors = v.generate_seccessors();
+        for (auto &m : successors) {
             if ((it = A.find(m.first)) != A.end()
                 && m.second.g < it->second.g) {
                 A.erase(it->first);
+                A_aux.erase(A_aux.lower_bound(*it));
             }
 
             if ((it = F.find(m.first)) != F.end()
@@ -259,37 +307,28 @@ std::pair<bool, int> a_star::run() {
 
             if (A.find(m.first) == A.end()
                 && F.find(m.first) == F.end()) {
-                m.second.p = &v;
                 m.second.calc_heuristic(heuristc_t::H3);
                 m.second.calc_f();
                 A.insert(m);
+                A_aux.insert(m);
             }
         }
 
-        v = find_min_f(A);
+        successors.clear();
     }
 
-    if (v.f >= 0 && T.find(v.hash_key) != T.end()) {
+    if (T.find(v.hash_key) != T.end()) {
         return {true, v.g};
     }
 
     return {false, -1};
 }
 
-a_star::~a_star() = default;
-
-state a_star::find_min_f(std::unordered_map<ull, state> &map) {
-    if (!map.empty()) {
-        state s = map.begin()->second;
-        for (auto &i : map) {
-            if (i.second.f < s.f
-                || (i.second.f == s.f && i.second.heuristic_value < s.heuristic_value)) {
-                s = i.second;
-            }
-        }
-
-        return s;
-    }
-
-    return {};
+a_star::~a_star() {
+    A.clear();
+    F.clear();
+    S.clear();
+    T.clear();
 }
+
+state::~state() = default;
