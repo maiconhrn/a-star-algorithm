@@ -2,11 +2,12 @@
 #include <set>
 #include <utility>
 #include <algorithm>
+#include <string>
 #include "a_star.h"
 #include "15_puzzle.h"
 
-a_star::a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> f,
-               std::unordered_map<ull, state> s, std::unordered_map<ull, state> t)
+a_star::a_star(std::unordered_map<std::string, state> a, std::unordered_map<std::string, state> f,
+               std::unordered_map<std::string, state> s, std::unordered_map<std::string, state> t)
         : A(std::move(a)),
           F(std::move(f)),
           S(std::move(s)),
@@ -17,7 +18,8 @@ int a_star::h1(const state &s) {
 
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            if (s.board[i][j] != FINAL_BOARD_STATE[i][j]) {
+            if (s.board[i][j] != 0
+                && s.board[i][j] != FINAL_BOARD_STATE[i][j]) {
                 out_of_pos++;
             }
         }
@@ -87,8 +89,8 @@ int a_star::calc_manhattan_distance(int value, int i, int j) {
     };
 
     auto correct_pos = final_board_postions[value];
-    int manhattan_distance = std::abs(correct_pos.first - i)
-                             + std::abs(correct_pos.second - j);
+    int manhattan_distance = abs(j - correct_pos.second)
+                             + abs(correct_pos.first - i);
     return manhattan_distance;
 }
 
@@ -97,7 +99,8 @@ int a_star::h3(const state &s) {
 
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            if (s.board[i][j] != FINAL_BOARD_STATE[i][j]) {
+            if (s.board[i][j] != 0
+                && s.board[i][j] != FINAL_BOARD_STATE[i][j]) {
                 heuristc_v += calc_manhattan_distance(s.board[i][j], i, j);
             }
         }
@@ -107,7 +110,7 @@ int a_star::h3(const state &s) {
 }
 
 int a_star::h4(const state &s) {
-    return (int) (0.01 * h1(s) + 0.01 * h2(s) + 0.98 * h3(s));
+    return (int) (0.08 * h1(s) + 0.02 * h2(s) + 0.9 * h3(s));
 };
 
 int a_star::h5(const state &s) {
@@ -146,7 +149,6 @@ state state::generate_next_seccessor(int i, int j, change_t dir) {
     state _s;
     short aux;
 
-    _s.g = g + 1;
     _s.copy_board(board);
 
     switch (dir) {
@@ -154,54 +156,65 @@ state state::generate_next_seccessor(int i, int j, change_t dir) {
             aux = _s.board[i][j];
             _s.board[i][j] = _s.board[i - 1][j];
             _s.board[i - 1][j] = aux;
+            _s.from_change = change_t::UP;
             break;
         case DOWN:
             aux = _s.board[i][j];
             _s.board[i][j] = _s.board[i + 1][j];
             _s.board[i + 1][j] = aux;
+            _s.from_change = change_t::DOWN;
             break;
         case LEFT:
             aux = _s.board[i][j];
             _s.board[i][j] = _s.board[i][j - 1];
             _s.board[i][j - 1] = aux;
+            _s.from_change = change_t::LEFT;
             break;
         case RIGHT:
             aux = _s.board[i][j];
             _s.board[i][j] = _s.board[i][j + 1];
             _s.board[i][j + 1] = aux;
+            _s.from_change = change_t::RIGHT;
             break;
         default:
             break;
     }
 
     _s.generate_hash_key();
+    if (!_s.p) {
+        _s.p = new state;
+    }
+    *(_s.p) = *this;
+    _s.g = g + 1;
+    _s.calc_heuristic(a_star::h_t);
+    _s.calc_f();
 
     return _s;
 }
 
-std::unordered_map<ull, state> state::generate_seccessors() {
+std::unordered_map<std::string, state> state::generate_seccessors() {
     state s;
-    auto successors = std::unordered_map<ull, state>();
+    auto successors = std::unordered_map<std::string, state>();
 
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
             if (board[i][j] == 0) {
-                if (i != 0) {
+                if (i != 0 && (p == nullptr || from_change != change_t::DOWN)) {
                     s = generate_next_seccessor(i, j, change_t::UP);
                     successors.insert({s.hash_key, s});
                 }
 
-                if (i != 3) {
+                if (i != 3 && (p == nullptr || from_change != change_t::UP)) {
                     s = generate_next_seccessor(i, j, change_t::DOWN);
                     successors.insert({s.hash_key, s});
                 }
 
-                if (j != 0) {
+                if (j != 0 && (p == nullptr || from_change != change_t::RIGHT)) {
                     s = generate_next_seccessor(i, j, change_t::LEFT);
                     successors.insert({s.hash_key, s});
                 }
 
-                if (j != 3) {
+                if (j != 3 && (p == nullptr || from_change != change_t::LEFT)) {
                     s = generate_next_seccessor(i, j, change_t::RIGHT);
                     successors.insert({s.hash_key, s});
                 }
@@ -215,13 +228,10 @@ std::unordered_map<ull, state> state::generate_seccessors() {
 }
 
 void state::generate_hash_key() {
-    hash_key = 0;
-    int count = 0;
+    hash_key = "";
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            short aux = board[i][j];
-            hash_key += aux << (count * 4);
-            count++;
+            hash_key += std::to_string(board[i][j]);
         }
     }
 }
@@ -234,20 +244,10 @@ bool state::operator!=(const state &rhs) const {
     return !(rhs == *this);
 }
 
-void state::copy_board(short b[4][4]) {
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            board[i][j] = b[i][j];
-        }
-    }
-}
-
-void state::calc_heuristic(heuristc_t type) {
-    heuristic_value = a_star::calc_heuristic(type, *this);
-}
-
 bool state::operator<(const state &rhs) const {
-    return f < rhs.f;
+    return f == rhs.f
+           ? heuristic_value < rhs.heuristic_value
+           : f < rhs.f;
 }
 
 bool state::operator>(const state &rhs) const {
@@ -262,16 +262,24 @@ bool state::operator>=(const state &rhs) const {
     return !(*this < rhs);
 }
 
+void state::copy_board(short b[4][4]) {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            board[i][j] = b[i][j];
+        }
+    }
+}
+
+void state::calc_heuristic(heuristc_t type) {
+    heuristic_value = a_star::calc_heuristic(type, *this);
+}
+
 std::pair<bool, int> a_star::run() {
     state v;
-    std::unordered_map<ull, state>::iterator it;
-    const static auto cmp = [](const std::pair<ull, state> &a, const std::pair<ull, state> &b) -> bool {
-        return a.second.f == b.second.f
-               ? a.second.heuristic_value < b.second.heuristic_value
-               : a.second.f < b.second.f;
-    };
-    auto A_aux = std::multiset<std::pair<ull, state>, decltype(cmp)>(cmp);
-    auto successors = std::unordered_map<ull, state>();
+    std::unordered_map<std::string, state>::iterator it;
+    std::multiset<state>::iterator it1;
+    auto A_aux = std::multiset<state>();
+    auto successors = std::unordered_map<std::string, state>();
 
     for (auto &s : S) {
         s.second.calc_heuristic(heuristc_t::H3);
@@ -282,37 +290,38 @@ std::pair<bool, int> a_star::run() {
     A.clear();
     A.insert(S.begin(), S.end());
     A_aux.clear();
-    A_aux.insert(A.begin(), A.end());
+    A_aux.insert(A.begin()->second);
     F.clear();
 
-    int c = 0;
-    while ((v = A_aux.begin()->second).hash_key != -1
+    while (!(v = *(it1 = A_aux.begin())).hash_key.empty()
            && T.find(v.hash_key) == T.end()) {
+        v.it = it1;
+        A_aux.erase(it1);
         A.erase(v.hash_key);
-        A_aux.erase(A_aux.lower_bound({v.hash_key, v}));
-        F.insert({v.hash_key, v});
+        F[v.hash_key] = v;
 
         successors = v.generate_seccessors();
         for (auto &m : successors) {
             if ((it = A.find(m.first)) != A.end()
                 && m.second.g < it->second.g) {
-                A.erase(it->first);
-                A_aux.erase(A_aux.lower_bound(*it));
+                A_aux.erase(it->second.it);
+                A.erase(it);
             }
 
             if ((it = F.find(m.first)) != F.end()
                 && m.second.g < it->second.g) {
-                F.erase(it->first);
+                F.erase(it);
             }
 
             if (A.find(m.first) == A.end()
                 && F.find(m.first) == F.end()) {
-                m.second.calc_heuristic(heuristc_t::H3);
-                m.second.calc_f();
+                it1 = A_aux.insert(m.second);
+                m.second.it = it1;
                 A.insert(m);
-                A_aux.insert(m);
             }
         }
+
+//        std::cout << A.size() << std::endl;
 
         successors.clear();
     }

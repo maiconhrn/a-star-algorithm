@@ -3,8 +3,8 @@
 
 #include<iostream>
 #include <unordered_map>
-
-typedef unsigned long long ull;
+#include <map>
+#include <set>
 
 typedef enum {
     H1, H2, H3, H4, H5
@@ -15,12 +15,18 @@ typedef enum {
 } change_t;
 
 typedef struct state {
-    ull hash_key = -1;
+    std::string hash_key;
     short board[4][4]; // 4X4
     int heuristic_value = -1;
 
+    std::multiset<state>::iterator it;
+
     int g = -1;
     int f = -1;
+
+    change_t from_change;
+
+    state *p = nullptr;
 
     state();
 
@@ -30,7 +36,7 @@ typedef struct state {
 
     void calc_f();
 
-    std::unordered_map<ull, state> generate_seccessors();
+    std::unordered_map<std::string, state> generate_seccessors();
 
     void calc_heuristic(heuristc_t type);
 
@@ -53,19 +59,12 @@ typedef struct state {
     bool operator>=(const state &rhs) const;
 } state;
 
-const static auto pair_ull_state_comparator = [](const std::pair<ull, state> &a,
-                                                 const std::pair<ull, state> &b) -> bool {
-    return a.second.f == b.second.f
-           ? a.second.heuristic_value < b.second.heuristic_value
-           : a.second.f < b.second.f;
-};
-
 class a_star {
 private:
-    std::unordered_map<ull, state> A; //opened
-    std::unordered_map<ull, state> F; //closed
-    std::unordered_map<ull, state> S; //initial
-    std::unordered_map<ull, state> T; //final
+    std::unordered_map<std::string, state> A; //opened
+    std::unordered_map<std::string, state> F; //closed
+    std::unordered_map<std::string, state> S; //initial
+    std::unordered_map<std::string, state> T; //final
 
     static int calc_manhattan_distance(int value, int i, int j);
 
@@ -80,14 +79,16 @@ private:
     static int h5(const state &s);
 
 public:
-    a_star(std::unordered_map<ull, state> a, std::unordered_map<ull, state> f,
-           std::unordered_map<ull, state> s, std::unordered_map<ull, state> t);
+    a_star(std::unordered_map<std::string, state> a, std::unordered_map<std::string, state> f,
+           std::unordered_map<std::string, state> s, std::unordered_map<std::string, state> t);
 
     ~a_star();
 
     std::pair<bool, int> run();
 
     static int calc_heuristic(heuristc_t type, state s);
+
+    const static heuristc_t h_t = heuristc_t::H3;
 };
 
 #endif //A_STAR_H

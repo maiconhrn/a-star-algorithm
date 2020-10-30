@@ -13,8 +13,6 @@ static short FINAL_BOARD_STATE[4][4] = {
         {10, 9,  8,  7}
 };
 
-short **read_board(std::istream &in);
-
 std::pair<bool, int> calc_lowest_move_number_to_final_board(short board[4][4]);
 
 #endif //_15_PUZZLE_H

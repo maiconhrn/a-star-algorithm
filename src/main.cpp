@@ -62,7 +62,13 @@ using std::endl;
 int main() {
 //    clock_t begin = clock();
 
-    auto **board = read_board(cin);
+    auto board = new short[4][4];
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            cin >> board[i][j];
+        }
+    }
 
     auto result = calc_lowest_move_number_to_final_board(board);
 
